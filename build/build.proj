@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+	<UsingTask TaskName="ILMerge.MSBuild.Tasks.ILMerge" AssemblyFile="$(Root)\lib\ILMerge.MSBuild.Tasks.dll" />
+
+    <PropertyGroup>
+        <Root>$(MSBuildProjectDirectory)\..</Root>
+		<OutputDir>$(Root)\build.output</OutputDir>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <Configuration>RELEASE</Configuration>
+    </PropertyGroup>
+
+	
+	
+    <Target Name="Build">
+
+	<RemoveDir Directories="$(OutputDir)" />
+		<MakeDir Directories="$(OutputDir)" />
+		
+        <MSBuild Projects="$(Root)\src\GzipApp\GzipApp.csproj" Targets="Rebuild" Properties="OutputPath=$(OutputDir);Configuration=$(Configuration);"></MSBuild>
+	
+		<ItemGroup>
+			<Assemblies Include="$(OutputDir)\GZipApp.exe" />
+			<Assemblies Include="$(OutputDir)\ICSharpCode.SharpZipLib.dll" />
+		</ItemGroup>
+	
+		<ILMerge InputAssemblies="@(Assemblies)" OutputFile="$(OutputDir)\gzip.exe" TargetKind="Exe" />
+	
+		<Delete Files="@(Assemblies)" />
+		
+    </Target>
+
+</Project>
