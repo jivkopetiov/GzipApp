@@ -9,6 +9,8 @@ namespace GzipApp
     {
         static void Main(string[] args)
         {
+            args = new[] { @"D:\do\imdb", "-d" };
+
             if (args == null || args.Length == 0)
             {
                 PrintUsage();
@@ -19,13 +21,13 @@ namespace GzipApp
             bool decompress = false;
             bool forceCompression = false;
 
-            var p = new OptionSet() {
+            var parameterOptions = new OptionSet() {
    	            { "l|level=", v => compressionLevel = int.Parse(v) },
                 { "d|decompress", v => decompress = v != null },
                 { "f|force", v => forceCompression = v != null }
             };
-            var extra = p.Parse(args);
-            string filePath = extra.First();
+            var parameters = parameterOptions.Parse(args);
+            string path = parameters.First();
 
             if (compressionLevel < 0 || compressionLevel > 9)
             {
@@ -33,12 +35,41 @@ namespace GzipApp
                 return;
             }
 
-            if (!File.Exists(filePath))
+            if (File.Exists(path))
             {
-                PrintError("File doesn't exist: " + filePath);
+                ProcessFile(compressionLevel, decompress, forceCompression, path);
+            }
+            else if (Directory.Exists(path))
+            {
+                foreach (string file in Directory.GetFiles(path, "*.*", SearchOption.TopDirectoryOnly))
+                {
+                    ProcessFile(compressionLevel, decompress, forceCompression, file);
+                }
+            }
+            else if (path.Contains("*"))
+            {
+                string directory = path.Substring(0, path.LastIndexOf("\\") - 1);
+                if (!Directory.Exists(directory))
+                {
+                    PrintError("Directory doesn't exist: " + path);
+                    return;
+                }
+
+                string searchPattern = path.Substring(path.LastIndexOf("\\") + 1);
+                foreach (string file in Directory.GetFiles(directory, searchPattern, SearchOption.TopDirectoryOnly))
+                {
+                    ProcessFile(compressionLevel, decompress, forceCompression, path);
+                }
+            }
+            else
+            {
+                PrintError("File / Directory do not exist: " + path);
                 return;
             }
+        }
 
+        private static void ProcessFile(int compressionLevel, bool decompress, bool forceCompression, string filePath)
+        {
             try
             {
                 if (decompress)
@@ -48,7 +79,7 @@ namespace GzipApp
             }
             catch (Exception ex)
             {
-                PrintError(ex.Message);
+                PrintError("Failed to process file " + filePath + " :: " + ex.Message);
             }
         }
 
@@ -56,7 +87,7 @@ namespace GzipApp
         {
             if (ZipService.IsFileGzipCompressed(filePath) && !forceCompression)
             {
-                throw new InvalidOperationException("File seems to be already gzip compressed. Cannot compress again. Use the -f switch to force compression.");
+                throw new InvalidOperationException("File seems to already be gzip compressed. Cannot compress again. Use the -f switch to force compression.");
             }
 
             string tempPath = Path.GetTempFileName();
@@ -73,8 +104,20 @@ namespace GzipApp
 
             string tempPath = Path.GetTempFileName();
             ZipService.GzipDecompressFile(filePath, tempPath);
-            File.Copy(tempPath, filePath, true);
+
+            if (filePath.EndsWith(".gz"))
+            {
+                string outputPath = filePath.Substring(0, filePath.Length - 3);
+                File.Copy(tempPath, outputPath, true);
+                File.Delete(filePath);
+            }
+            else
+            {
+                File.Copy(tempPath, filePath, true);
+            }
+
             File.Delete(tempPath);
+
             PrintSuccess("Successfully decompressed file " + filePath);
         }
 
@@ -94,8 +137,8 @@ namespace GzipApp
 
         private static void PrintUsage()
         {
-            Console.WriteLine("gzip <filepath> [-l=<level>] [-d] [-f]");
-            Console.WriteLine("-filepath - the path of the file to do gzip on.");
+            Console.WriteLine("gzip <path> [-l=<level>] [-d] [-f]");
+            Console.WriteLine("-path - the path of the file / directory to do gzip on. also supported is wildcard file matching with *");
             Console.WriteLine("-l - the gzip compression level. Possible values from 0 to 9.");
             Console.WriteLine("-f - forces compression even if file is already compressed.");
             Console.WriteLine("-d - decompresses the file.");
