@@ -9,7 +9,7 @@ namespace GzipApp
     {
         static void Main(string[] args)
         {
-            args = new[] { @"D:\do\imdb", "-d" };
+            //args = new[] { @"D:\do", "-d" };
 
             if (args == null || args.Length == 0)
             {
